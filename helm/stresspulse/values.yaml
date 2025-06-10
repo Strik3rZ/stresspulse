@@ -1,0 +1,90 @@
+replicaCount: 1
+
+image:
+  repository: stresspulse
+  tag: latest
+  pullPolicy: IfNotPresent
+
+config:
+  cpu: 50
+  drift: 20
+  pattern: sine
+  duration: 0
+  period: 30s
+  workers: 0
+  logLevel: info
+  metrics:
+    enabled: true
+    port: 9090
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 64Mi
+  limits:
+    cpu: 1000m
+    memory: 128Mi
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+probes:
+  liveness:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readiness:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+service:
+  type: ClusterIP
+  port: 9090
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: stresspulse.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: stresspulse-tls
+  #    hosts:
+  #      - stresspulse.local
+
+serviceMonitor:
+  enabled: true
+  namespace: ""
+  interval: 30s
+  scrapeTimeout: 10s
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+extraLabels: {}
+
+extraAnnotations: {}
