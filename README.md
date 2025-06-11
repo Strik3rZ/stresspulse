@@ -61,7 +61,7 @@ docker-compose up -d
 - `-pattern sine` - какой паттерн использовать
 - `-period 30s` - период одного цикла
 
-### Фейковые логи (новая фишка!)
+### Фейковые логи
 - `-fake-logs` - включить генерацию фейковых логов  
 - `-fake-logs-type java` - тип логов: java, web, microservice, database, ecommerce
 - `-fake-logs-interval 1s` - как часто генерировать логи
