@@ -12,6 +12,7 @@
 - Собирать метрики для Prometheus/Grafana  
 - Работать в Docker и Kubernetes
 - Не сожрать весь сервер случайно
+- **Генерировать реалистичные логи как у настоящих приложений**
 
 ## Как попробовать
 
@@ -24,8 +25,11 @@ go mod tidy
 # Запусти на 50% CPU
 go run main.go
 
-# Или потяжелее
-go run main.go -cpu 90 -pattern square
+# С фейковыми логами Java приложения
+go run main.go -cpu 70 -fake-logs -fake-logs-type java
+
+# Веб-сервер с активными логами
+go run main.go -cpu 50 -fake-logs -fake-logs-type web -fake-logs-interval 500ms
 ```
 
 Если есть Docker:
@@ -33,7 +37,7 @@ go run main.go -cpu 90 -pattern square
 ```bash
 # Собери и запусти
 docker build -t stresspulse .
-docker run --rm stresspulse -cpu 70 -metrics
+docker run --rm stresspulse -cpu 70 -metrics -fake-logs
 ```
 
 Для продакшна лучше взять готовый Docker Compose или Kubernetes:
@@ -57,6 +61,11 @@ docker-compose up -d
 - `-pattern sine` - какой паттерн использовать
 - `-period 30s` - период одного цикла
 
+### Фейковые логи (новая фишка!)
+- `-fake-logs` - включить генерацию фейковых логов  
+- `-fake-logs-type java` - тип логов: java, web, microservice, database, ecommerce
+- `-fake-logs-interval 1s` - как часто генерировать логи
+
 ### Остальное
 - `-workers 4` - сколько потоков запустить (0 = по количеству ядер)
 - `-log-level debug` - насколько подробные логи хочешь видеть
@@ -72,8 +81,14 @@ go run main.go -cpu 30 -duration 30m
 # Имитация пиковой нагрузки  
 go run main.go -cpu 85 -pattern square -drift 15
 
-# Длительный стресс-тест с мониторингом
-go run main.go -cpu 50 -duration 2h -save-profile -metrics
+# Имитация Java приложения под нагрузкой
+go run main.go -cpu 60 -fake-logs -fake-logs-type java -fake-logs-interval 800ms
+
+# Имитация микросервисной архитектуры
+go run main.go -cpu 45 -fake-logs -fake-logs-type microservice -fake-logs-interval 300ms
+
+# Стресс-тест базы данных с логами
+go run main.go -cpu 70 -fake-logs -fake-logs-type database -fake-logs-interval 2s -duration 1h
 
 # Отладка (если что-то не работает)
 go run main.go -log-level debug -cpu 25
@@ -93,6 +108,24 @@ go run main.go -log-level debug -cpu 25
 
 Можешь поэкспериментировать и посмотреть как твоя система реагирует на разные типы.
 
+## Типы фейковых логов
+
+Добавил реалистичные логи для разных типов приложений:
+
+**java** - Spring Boot приложение с Hibernate, логи классов, SQL запросы, GC
+
+**web** - HTTP access логи как в nginx/apache, разные статусы, времена ответа
+
+**microservice** - современная архитектура с trace ID, span ID, circuit breaker
+
+**database** - PostgreSQL/MySQL логи с запросами, временем выполнения, блокировками
+
+**ecommerce** - события интернет-магазина: логины, покупки, платежи
+
+**generic** - обычные логи приложения с разными уровнями
+
+Логи генерируются в реальном времени параллельно с нагрузкой CPU. Удобно для тестирования систем сбора логов типа ELK, Fluentd, Loki.
+
 ## Мониторинг
 
 Если запустишь с `-metrics`, то на порту 9090 появятся метрики для Prometheus:
@@ -110,12 +143,16 @@ go run main.go -log-level debug -cpu 25
 - `5m` - пять минут  
 - `2h` - два часа
 - `1h30m` - полтора часа
+- `500ms` - полсекунды (для интервала логов)
 
 ## Docker варианты
 
 ```bash
 # Просто запустить
 docker run --rm -p 9090:9090 stresspulse -cpu 70 -metrics
+
+# С фейковыми логами
+docker run --rm stresspulse -cpu 50 -fake-logs -fake-logs-type web
 
 # Ограничить ресурсы (чтобы не убить хост)
 docker run --cpus 0.5 --memory 128m stresspulse -cpu 50
@@ -191,6 +228,7 @@ curl http://localhost:9090/metrics
 - `load/` - основная логика генерации нагрузки
 - `patterns/` - алгоритмы для разных паттернов
 - `logger/` - логирование с уровнями
+- `logs/` - генератор фейковых логов
 - `metrics/` - интеграция с Prometheus
 - `helm/` - конфиги для Kubernetes
 - `monitoring/` - настройки Prometheus/Grafana
@@ -202,3 +240,4 @@ curl http://localhost:9090/metrics
 - Больше паттернов 
 - Web-интерфейс для управления
 - Distributed режим для кластерного тестирования
+- Больше типов фейковых логов (Kubernetes, Redis, ElasticSearch)

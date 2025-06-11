@@ -10,4 +10,6 @@ var (
 	ErrInvalidPatternType = errors.New("invalid pattern type")
 	ErrInvalidMetricsPort = errors.New("metrics port must be between 1024 and 65535")
 	ErrInvalidLogLevel = errors.New("invalid log level")
+	ErrInvalidFakeLogsType = errors.New("invalid fake logs type")
+	ErrInvalidFakeLogsInterval = errors.New("fake logs interval must be positive")
 ) 

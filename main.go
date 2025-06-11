@@ -9,6 +9,7 @@ import (
 
 	"stresspulse/config"
 	"stresspulse/load"
+	"stresspulse/logs"
 	"stresspulse/logger"
 	"stresspulse/metrics"
 )
@@ -29,6 +30,11 @@ func main() {
 
 	generator := load.NewGenerator(cfg)
 
+	var fakeLogGenerator *logs.FakeLogGenerator
+	if cfg.FakeLogsEnabled {
+		fakeLogGenerator = logs.NewFakeLogGenerator(cfg.FakeLogsType, cfg.FakeLogsInterval, logger.GetLogger())
+	}
+
 	if cfg.MetricsEnabled {
 		collector := metrics.NewCollector()
 		go func() {
@@ -39,6 +45,10 @@ func main() {
 	}
 
 	generator.Start(ctx)
+
+	if cfg.FakeLogsEnabled {
+		fakeLogGenerator.Start()
+	}
 
 	logger.Info("Starting StressPulse - Advanced CPU Load Generator")
 	logger.Info("Target CPU: %.1f%%", cfg.TargetCPUPercent)
@@ -54,6 +64,9 @@ func main() {
 	if cfg.MetricsEnabled {
 		logger.Info("Metrics enabled on port %d", cfg.MetricsPort)
 	}
+	if cfg.FakeLogsEnabled {
+		logger.Info("Fake logs enabled: type=%s, interval=%s", cfg.FakeLogsType, cfg.FakeLogsInterval)
+	}
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -68,6 +81,10 @@ func main() {
 	} else {
 		sig := <-sigChan
 		logger.Info("Received signal: %v", sig)
+	}
+
+	if cfg.FakeLogsEnabled {
+		fakeLogGenerator.Stop()
 	}
 
 	generator.Stop()

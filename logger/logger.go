@@ -55,4 +55,9 @@ func Warning(format string, v ...interface{}) {
 
 func Error(format string, v ...interface{}) {
 	errorLogger.Output(2, fmt.Sprintf(format, v...))
+}
+
+// GetLogger возвращает базовый логгер для использования в других модулях
+func GetLogger() *log.Logger {
+	return log.New(os.Stdout, "", log.Ldate|log.Ltime)
 } 

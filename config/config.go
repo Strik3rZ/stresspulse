@@ -17,6 +17,9 @@ type Config struct {
 	PatternType      string
 	ProfilePath      string
 	SaveProfile      bool
+	FakeLogsEnabled  bool
+	FakeLogsType     string
+	FakeLogsInterval time.Duration
 }
 
 func NewConfig() *Config {
@@ -32,6 +35,9 @@ func NewConfig() *Config {
 		PatternType:      "sine",
 		ProfilePath:      "profile.json",
 		SaveProfile:      false,
+		FakeLogsEnabled:  false,
+		FakeLogsType:     "java",
+		FakeLogsInterval: 1 * time.Second,
 	}
 }
 
@@ -47,6 +53,9 @@ func (c *Config) ParseFlags() {
 	flag.StringVar(&c.PatternType, "pattern", c.PatternType, "Тип паттерна нагрузки (sine, square, sawtooth, random)")
 	flag.StringVar(&c.ProfilePath, "profile", c.ProfilePath, "Путь для сохранения/загрузки профиля CPU")
 	flag.BoolVar(&c.SaveProfile, "save-profile", c.SaveProfile, "Сохранение профиля CPU после теста")
+	flag.BoolVar(&c.FakeLogsEnabled, "fake-logs", c.FakeLogsEnabled, "Включение генерации фейковых логов")
+	flag.StringVar(&c.FakeLogsType, "fake-logs-type", c.FakeLogsType, "Тип фейковых логов (java, web, microservice, database, ecommerce)")
+	flag.DurationVar(&c.FakeLogsInterval, "fake-logs-interval", c.FakeLogsInterval, "Интервал генерации фейковых логов")
 	flag.Parse()
 }
 
@@ -71,6 +80,22 @@ func (c *Config) Validate() error {
 	}
 	if c.LogLevel != "debug" && c.LogLevel != "info" && c.LogLevel != "warn" && c.LogLevel != "error" {
 		return ErrInvalidLogLevel
+	}
+	if c.FakeLogsEnabled {
+		validTypes := []string{"java", "web", "microservice", "database", "ecommerce", "generic"}
+		valid := false
+		for _, validType := range validTypes {
+			if c.FakeLogsType == validType {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return ErrInvalidFakeLogsType
+		}
+		if c.FakeLogsInterval <= 0 {
+			return ErrInvalidFakeLogsInterval
+		}
 	}
 	return nil
 } 
