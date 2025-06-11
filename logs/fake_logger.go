@@ -101,22 +101,20 @@ func (flg *FakeLogGenerator) generateJavaLog() {
 			message := messages[rand.Intn(len(messages))]
 			
 			switch rand.Intn(4) {
-			case 0: // INFO
+			case 0:
 				flg.logger.Printf("INFO  [main] %s - %s", class, fmt.Sprintf(message, rand.Intn(10000), generateRandomString(8), rand.Intn(100), rand.Intn(500)))
-			case 1: // DEBUG  
+			case 1: 
 				flg.logger.Printf("DEBUG [http-thread-%d] %s - %s", rand.Intn(20), class, fmt.Sprintf(message, rand.Intn(10000), generateRandomString(8), rand.Intn(100), rand.Intn(500)))
-			case 2: // WARN
+			case 2:
 				flg.logger.Printf("WARN  [scheduler-1] %s - Connection pool running low: %d connections available", class, rand.Intn(5)+1)
-			case 3: // ERROR
+			case 3:
 				flg.logger.Printf("ERROR [main] %s - Failed to process request: %s", class, generateRandomError())
 			}
 		},
 		func() {
-			// Spring Boot специфичные логи
 			flg.logger.Printf("INFO  [main] o.s.b.w.embedded.tomcat.TomcatWebServer - Tomcat started on port(s): 8080 (http)")
 		},
 		func() {
-			// SQL логи
 			queries := []string{
 				"SELECT * FROM users WHERE id = %d",
 				"UPDATE orders SET status = 'COMPLETED' WHERE id = %d", 
