@@ -6,20 +6,32 @@ import (
 )
 
 type Config struct {
-	TargetCPUPercent float64
-	Duration         time.Duration
-	DriftAmplitude   float64
-	DriftPeriod      time.Duration
-	NumWorkers       int
-	LogLevel         string
-	MetricsEnabled   bool
-	MetricsPort      int
-	PatternType      string
-	ProfilePath      string
-	SaveProfile      bool
-	FakeLogsEnabled  bool
-	FakeLogsType     string
-	FakeLogsInterval time.Duration
+	TargetCPUPercent  float64
+	Duration          time.Duration
+	DriftAmplitude    float64
+	DriftPeriod       time.Duration
+	NumWorkers        int
+	LogLevel          string
+	MetricsEnabled    bool
+	MetricsPort       int
+	PatternType       string
+	ProfilePath       string
+	SaveProfile       bool
+	FakeLogsEnabled   bool
+	FakeLogsType      string
+	FakeLogsInterval  time.Duration
+	MemoryEnabled     bool
+	MemoryTargetMB    int
+	MemoryPattern     string
+	MemoryInterval    time.Duration
+	HTTPEnabled       bool
+	HTTPTargetURL     string
+	HTTPTargetRPS     int
+	HTTPPattern       string
+	HTTPMethod        string
+	HTTPTimeout       time.Duration
+	HTTPHeaders       string
+	HTTPBody          string
 }
 
 func NewConfig() *Config {
@@ -38,6 +50,18 @@ func NewConfig() *Config {
 		FakeLogsEnabled:  false,
 		FakeLogsType:     "java",
 		FakeLogsInterval: 1 * time.Second,
+		MemoryEnabled:    false,
+		MemoryTargetMB:   100,
+		MemoryPattern:    "constant",
+		MemoryInterval:   2 * time.Second,
+		HTTPEnabled:      false,
+		HTTPTargetURL:    "http://localhost:8080/health",
+		HTTPTargetRPS:    10,
+		HTTPPattern:      "constant",
+		HTTPMethod:       "GET",
+		HTTPTimeout:      5 * time.Second,
+		HTTPHeaders:      "",
+		HTTPBody:         "",
 	}
 }
 
@@ -56,6 +80,18 @@ func (c *Config) ParseFlags() {
 	flag.BoolVar(&c.FakeLogsEnabled, "fake-logs", c.FakeLogsEnabled, "Включение генерации фейковых логов")
 	flag.StringVar(&c.FakeLogsType, "fake-logs-type", c.FakeLogsType, "Тип фейковых логов (java, web, microservice, database, ecommerce)")
 	flag.DurationVar(&c.FakeLogsInterval, "fake-logs-interval", c.FakeLogsInterval, "Интервал генерации фейковых логов")
+	flag.BoolVar(&c.MemoryEnabled, "memory", c.MemoryEnabled, "Включение нагрузки на память")
+	flag.IntVar(&c.MemoryTargetMB, "memory-target", c.MemoryTargetMB, "Целевое количество памяти в MB")
+	flag.StringVar(&c.MemoryPattern, "memory-pattern", c.MemoryPattern, "Паттерн использования памяти (constant, leak, spike, cycle, random)")
+	flag.DurationVar(&c.MemoryInterval, "memory-interval", c.MemoryInterval, "Интервал операций с памятью")
+	flag.BoolVar(&c.HTTPEnabled, "http", c.HTTPEnabled, "Включение HTTP нагрузочного тестирования")
+	flag.StringVar(&c.HTTPTargetURL, "http-url", c.HTTPTargetURL, "URL для HTTP нагрузочного тестирования")
+	flag.IntVar(&c.HTTPTargetRPS, "http-rps", c.HTTPTargetRPS, "Целевое количество запросов в секунду")
+	flag.StringVar(&c.HTTPPattern, "http-pattern", c.HTTPPattern, "Паттерн HTTP нагрузки (constant, spike, cycle, ramp, random)")
+	flag.StringVar(&c.HTTPMethod, "http-method", c.HTTPMethod, "HTTP метод (GET, POST, PUT, DELETE)")
+	flag.DurationVar(&c.HTTPTimeout, "http-timeout", c.HTTPTimeout, "Таймаут HTTP запросов")
+	flag.StringVar(&c.HTTPHeaders, "http-headers", c.HTTPHeaders, "HTTP заголовки в формате 'Key1:Value1,Key2:Value2'")
+	flag.StringVar(&c.HTTPBody, "http-body", c.HTTPBody, "Тело HTTP запроса")
 	flag.Parse()
 }
 
@@ -95,6 +131,58 @@ func (c *Config) Validate() error {
 		}
 		if c.FakeLogsInterval <= 0 {
 			return ErrInvalidFakeLogsInterval
+		}
+	}
+	if c.MemoryEnabled {
+		if c.MemoryTargetMB <= 0 {
+			return ErrInvalidMemoryTarget
+		}
+		validPatterns := []string{"constant", "leak", "spike", "cycle", "random"}
+		valid := false
+		for _, validPattern := range validPatterns {
+			if c.MemoryPattern == validPattern {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return ErrInvalidMemoryPattern
+		}
+		if c.MemoryInterval <= 0 {
+			return ErrInvalidMemoryInterval
+		}
+	}
+	if c.HTTPEnabled {
+		if c.HTTPTargetURL == "" {
+			return ErrInvalidHTTPURL
+		}
+		if c.HTTPTargetRPS <= 0 {
+			return ErrInvalidHTTPRPS
+		}
+		validHTTPPatterns := []string{"constant", "spike", "cycle", "ramp", "random"}
+		valid := false
+		for _, validPattern := range validHTTPPatterns {
+			if c.HTTPPattern == validPattern {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return ErrInvalidHTTPPattern
+		}
+		validMethods := []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
+		valid = false
+		for _, validMethod := range validMethods {
+			if c.HTTPMethod == validMethod {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return ErrInvalidHTTPMethod
+		}
+		if c.HTTPTimeout <= 0 {
+			return ErrInvalidHTTPTimeout
 		}
 	}
 	return nil

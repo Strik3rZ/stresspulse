@@ -16,7 +16,12 @@ services:
       "-pattern", "sine",
       "-period", "30s",
       "-log-level", "info",
-      "-metrics"
+      "-metrics",
+      "-memory",
+      "-memory-target", "200",
+      "-memory-pattern", "cycle",
+      "-fake-logs",
+      "-fake-logs-type", "web"
     ]
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/metrics"]
@@ -32,6 +37,8 @@ services:
     cap_drop:
       - ALL
     user: "1000:1000"
+    mem_limit: 512m
+    memswap_limit: 512m
 
   prometheus:
     image: prom/prometheus:latest

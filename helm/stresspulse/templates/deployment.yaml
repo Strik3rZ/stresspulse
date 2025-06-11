@@ -69,6 +69,22 @@ spec:
             {{- if .Values.config.metrics.enabled }}
             - "-metrics"
             {{- end }}
+            {{- if .Values.config.fakeLogsEnabled }}
+            - "-fake-logs"
+            - "-fake-logs-type"
+            - "{{ .Values.config.fakeLogsType }}"
+            - "-fake-logs-interval"
+            - "{{ .Values.config.fakeLogsInterval }}"
+            {{- end }}
+            {{- if .Values.config.memoryEnabled }}
+            - "-memory"
+            - "-memory-target"
+            - "{{ .Values.config.memoryTargetMB }}"
+            - "-memory-pattern"
+            - "{{ .Values.config.memoryPattern }}"
+            - "-memory-interval"
+            - "{{ .Values.config.memoryInterval }}"
+            {{- end }}
           ports:
             - name: metrics
               containerPort: {{ .Values.config.metrics.port }}
