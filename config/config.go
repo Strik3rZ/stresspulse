@@ -20,10 +20,12 @@ type Config struct {
 	FakeLogsEnabled   bool
 	FakeLogsType      string
 	FakeLogsInterval  time.Duration
+
 	MemoryEnabled     bool
 	MemoryTargetMB    int
 	MemoryPattern     string
 	MemoryInterval    time.Duration
+
 	HTTPEnabled       bool
 	HTTPTargetURL     string
 	HTTPTargetRPS     int
@@ -32,6 +34,23 @@ type Config struct {
 	HTTPTimeout       time.Duration
 	HTTPHeaders       string
 	HTTPBody          string
+
+	WebSocketEnabled         bool
+	WebSocketTargetURL       string
+	WebSocketTargetCPS       int
+	WebSocketPattern         string
+	WebSocketMessageInterval time.Duration
+	WebSocketMessageSize     int
+	WebSocketHeaders         string
+
+	GRPCEnabled      bool
+	GRPCTargetAddr   string
+	GRPCTargetRPS    int
+	GRPCPattern      string
+	GRPCServiceName  string
+	GRPCMethodType   string
+	GRPCUseSecure    bool
+	GRPCMetadata     string
 }
 
 func NewConfig() *Config {
@@ -62,6 +81,23 @@ func NewConfig() *Config {
 		HTTPTimeout:      5 * time.Second,
 		HTTPHeaders:      "",
 		HTTPBody:         "",
+
+		WebSocketEnabled:         false,
+		WebSocketTargetURL:       "ws://localhost:8080/ws",
+		WebSocketTargetCPS:       5,
+		WebSocketPattern:         "constant",
+		WebSocketMessageInterval: 1 * time.Second,
+		WebSocketMessageSize:     256,
+		WebSocketHeaders:         "",
+
+		GRPCEnabled:     false,
+		GRPCTargetAddr:  "localhost:9000",
+		GRPCTargetRPS:   10,
+		GRPCPattern:     "constant",
+		GRPCServiceName: "",
+		GRPCMethodType:  "health_check",
+		GRPCUseSecure:   false,
+		GRPCMetadata:    "",
 	}
 }
 
@@ -92,6 +128,24 @@ func (c *Config) ParseFlags() {
 	flag.DurationVar(&c.HTTPTimeout, "http-timeout", c.HTTPTimeout, "Таймаут HTTP запросов")
 	flag.StringVar(&c.HTTPHeaders, "http-headers", c.HTTPHeaders, "HTTP заголовки в формате 'Key1:Value1,Key2:Value2'")
 	flag.StringVar(&c.HTTPBody, "http-body", c.HTTPBody, "Тело HTTP запроса")
+	
+	flag.BoolVar(&c.WebSocketEnabled, "websocket", c.WebSocketEnabled, "Включение WebSocket нагрузочного тестирования")
+	flag.StringVar(&c.WebSocketTargetURL, "websocket-url", c.WebSocketTargetURL, "URL для WebSocket соединений")
+	flag.IntVar(&c.WebSocketTargetCPS, "websocket-cps", c.WebSocketTargetCPS, "Целевое количество соединений в секунду")
+	flag.StringVar(&c.WebSocketPattern, "websocket-pattern", c.WebSocketPattern, "Паттерн WebSocket нагрузки (constant, spike, cycle, ramp, random)")
+	flag.DurationVar(&c.WebSocketMessageInterval, "websocket-message-interval", c.WebSocketMessageInterval, "Интервал отправки сообщений")
+	flag.IntVar(&c.WebSocketMessageSize, "websocket-message-size", c.WebSocketMessageSize, "Размер сообщений в байтах")
+	flag.StringVar(&c.WebSocketHeaders, "websocket-headers", c.WebSocketHeaders, "WebSocket заголовки в формате 'Key1:Value1,Key2:Value2'")
+	
+	flag.BoolVar(&c.GRPCEnabled, "grpc", c.GRPCEnabled, "Включение gRPC нагрузочного тестирования")
+	flag.StringVar(&c.GRPCTargetAddr, "grpc-addr", c.GRPCTargetAddr, "Адрес gRPC сервера")
+	flag.IntVar(&c.GRPCTargetRPS, "grpc-rps", c.GRPCTargetRPS, "Целевое количество запросов в секунду")
+	flag.StringVar(&c.GRPCPattern, "grpc-pattern", c.GRPCPattern, "Паттерн gRPC нагрузки (constant, spike, cycle, ramp, random)")
+	flag.StringVar(&c.GRPCServiceName, "grpc-service", c.GRPCServiceName, "Имя gRPC сервиса для health check")
+	flag.StringVar(&c.GRPCMethodType, "grpc-method", c.GRPCMethodType, "Тип gRPC метода (health_check, unary, server_stream, client_stream, bidi_stream)")
+	flag.BoolVar(&c.GRPCUseSecure, "grpc-secure", c.GRPCUseSecure, "Использовать TLS для gRPC соединений")
+	flag.StringVar(&c.GRPCMetadata, "grpc-metadata", c.GRPCMetadata, "gRPC метаданные в формате 'Key1:Value1,Key2:Value2'")
+	
 	flag.Parse()
 }
 
@@ -185,5 +239,65 @@ func (c *Config) Validate() error {
 			return ErrInvalidHTTPTimeout
 		}
 	}
+	
+	// WebSocket validation
+	if c.WebSocketEnabled {
+		if c.WebSocketTargetURL == "" {
+			return ErrInvalidWebSocketURL
+		}
+		if c.WebSocketTargetCPS <= 0 {
+			return ErrInvalidWebSocketCPS
+		}
+		validWebSocketPatterns := []string{"constant", "spike", "cycle", "ramp", "random"}
+		valid := false
+		for _, validPattern := range validWebSocketPatterns {
+			if c.WebSocketPattern == validPattern {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return ErrInvalidWebSocketPattern
+		}
+		if c.WebSocketMessageInterval <= 0 {
+			return ErrInvalidWebSocketMessageInterval
+		}
+		if c.WebSocketMessageSize <= 0 {
+			return ErrInvalidWebSocketMessageSize
+		}
+	}
+	
+	// gRPC validation
+	if c.GRPCEnabled {
+		if c.GRPCTargetAddr == "" {
+			return ErrInvalidGRPCAddress
+		}
+		if c.GRPCTargetRPS <= 0 {
+			return ErrInvalidGRPCRPS
+		}
+		validGRPCPatterns := []string{"constant", "spike", "cycle", "ramp", "random"}
+		valid := false
+		for _, validPattern := range validGRPCPatterns {
+			if c.GRPCPattern == validPattern {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return ErrInvalidGRPCPattern
+		}
+		validGRPCMethods := []string{"health_check", "unary", "server_stream", "client_stream", "bidi_stream"}
+		valid = false
+		for _, validMethod := range validGRPCMethods {
+			if c.GRPCMethodType == validMethod {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return ErrInvalidGRPCMethodType
+		}
+	}
+	
 	return nil
 } 

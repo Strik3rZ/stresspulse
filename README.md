@@ -15,6 +15,8 @@
 - **Генерировать реалистичные логи как у настоящих приложений**
 - **Создавать нагрузку на память с разными паттернами использования**
 - **Тестировать RPS и время ответа веб-сервисов**
+- **WebSocket нагрузочное тестирование**
+- **gRPC тестирование**
 
 ## Как попробовать
 
@@ -36,8 +38,14 @@ go run main.go -cpu 30 -memory -memory-target 200 -memory-pattern constant
 # HTTP нагрузочное тестирование
 go run main.go -http -http-url "http://localhost:8080/api/health" -http-rps 50
 
-# Полный стресс-тест: CPU + память + HTTP + логи
-go run main.go -cpu 60 -memory -memory-target 300 -http -http-url "http://localhost:8080" -http-rps 100 -fake-logs
+# WebSocket тест
+go run main.go -websocket -websocket-url "ws://echo.websocket.org" -websocket-cps 10
+
+# gRPC тест
+go run main.go -grpc -grpc-addr "localhost:9000" -grpc-rps 20
+
+# Полный стресс-тест: CPU + память + HTTP + WebSocket + gRPC + логи
+go run main.go -cpu 60 -memory -memory-target 300 -http -http-url "http://localhost:8080" -http-rps 100 -websocket -websocket-url "ws://localhost:8080/ws" -grpc -grpc-addr "localhost:9000" -fake-logs
 ```
 
 Если есть Docker:
@@ -85,6 +93,25 @@ docker-compose up -d
 - `-http-headers "Content-Type:application/json,Authorization:Bearer token"` - заголовки
 - `-http-body '{"test": "data"}'` - тело запроса
 
+### WebSocket тестирование
+- `-websocket` - включить WebSocket нагрузочное тестирование
+- `-websocket-url "ws://localhost:8080/ws"` - WebSocket URL  
+- `-websocket-cps 10` - сколько новых соединений в секунду создавать
+- `-websocket-pattern constant` - паттерн подключений
+- `-websocket-message-interval 1s` - как часто отправлять сообщения
+- `-websocket-message-size 256` - размер сообщений в байтах
+- `-websocket-headers "Origin:example.com"` - заголовки подключения
+
+### gRPC тестирование
+- `-grpc` - включить gRPC нагрузочное тестирование
+- `-grpc-addr "localhost:9000"` - адрес gRPC сервера
+- `-grpc-rps 50` - сколько запросов в секунду
+- `-grpc-pattern constant` - паттерн нагрузки
+- `-grpc-method health_check` - тип метода (health_check, unary, server_stream, client_stream, bidi_stream)
+- `-grpc-service "UserService"` - имя сервиса для health check
+- `-grpc-secure` - использовать TLS
+- `-grpc-metadata "auth:token,version:v1"` - метаданные
+
 ### Фейковые логи
 - `-fake-logs` - включить генерацию фейковых логов  
 - `-fake-logs-type java` - тип логов: java, web, microservice, database, ecommerce
@@ -112,6 +139,14 @@ go run main.go -http -http-url "http://localhost:3000/api/users" -http-rps 200 -
 go run main.go -http -http-url "http://localhost:3000/api/users" -http-rps 50 -http-method POST \
   -http-headers "Content-Type:application/json" -http-body '{"name":"test","email":"test@example.com"}'
 
+# WebSocket чат симуляция
+go run main.go -websocket -websocket-url "ws://localhost:8080/chat" -websocket-cps 20 \
+  -websocket-message-interval 2s -websocket-message-size 128
+
+# gRPC микросервис тест
+go run main.go -grpc -grpc-addr "user-service:9000" -grpc-rps 100 -grpc-secure \
+  -grpc-service "UserService" -grpc-metadata "tenant:prod"
+
 # Тестирование утечки памяти
 go run main.go -cpu 40 -memory -memory-target 500 -memory-pattern leak -duration 1h
 
@@ -119,10 +154,13 @@ go run main.go -cpu 40 -memory -memory-target 500 -memory-pattern leak -duration
 go run main.go -http -http-url "http://localhost:8080" -http-rps 100 -http-pattern ramp -duration 30m
 
 # Полный стресс для веб-сервиса
-go run main.go -cpu 70 -memory -memory-target 400 -http -http-url "http://localhost:8080/api" \
-  -http-rps 150 -http-pattern spike -fake-logs -fake-logs-type web -duration 2h
+go run main.go -cpu 70 -memory -memory-target 400 \
+  -http -http-url "http://localhost:8080/api" -http-rps 150 -http-pattern spike \
+  -websocket -websocket-url "ws://localhost:8080/ws" -websocket-cps 25 \
+  -grpc -grpc-addr "localhost:9000" -grpc-rps 75 \
+  -fake-logs -fake-logs-type web -duration 2h
 
-# Отладка (если что-то не работает)
+# Отладка
 go run main.go -log-level debug -cpu 25
 ```
 
@@ -172,6 +210,24 @@ go run main.go -log-level debug -cpu 25
 
 Отлично подходит для тестирования API, микросервисов и веб-приложений.
 
+## WebSocket и gRPC
+
+Недавно добавил поддержку WebSocket и gRPC тестирования - оказалось очень полезно для современных приложений.
+
+**WebSocket** крут для:
+- Тестирования чат-серверов
+- Симуляции множественных пользователей
+- Проверки real-time приложений
+- Игровых серверов
+
+**gRPC** помогает с:
+- Микросервисной архитектурой
+- Health check'ами
+- Тестированием streaming методов
+- Проверкой производительности API
+
+Те же паттерны нагрузки работают и тут. Подробности в [WEBSOCKET_GRPC_GUIDE.md](WEBSOCKET_GRPC_GUIDE.md).
+
 ## Типы фейковых логов
 
 Добавил реалистичные логи для разных типов приложений:
@@ -195,10 +251,9 @@ go run main.go -log-level debug -cpu 25
 Если запустишь с `-metrics`, то на порту 9090 появятся метрики для Prometheus:
 
 ### CPU метрики:
-- `cpu_usage_percent` - сколько сейчас процессор нагружен
-- `cpu_target_percent` - сколько хотели нагрузить  
-- `pattern_value` - текущее значение паттерна
-- `workers_count` - сколько потоков работает
+- `cpu_stress_current_load` - сколько сейчас процессор нагружен
+- `cpu_stress_average_load` - средняя нагрузка  
+- `cpu_stress_samples_total` - количество измерений
 
 ### Память метрики:
 - `memory_allocated_mb` - сколько памяти выделено сейчас
@@ -217,6 +272,24 @@ go run main.go -log-level debug -cpu 25
 - `http_response_time_seconds` - гистограмма времён ответа
 - `http_avg_response_time_seconds` - среднее время ответа
 - `http_success_rate_percent` - процент успешных запросов
+
+### WebSocket метрики:
+- `websocket_connections_total` - общее количество соединений
+- `websocket_active_connections` - активные соединения сейчас
+- `websocket_connections_failed_total` - неудачные подключения
+- `websocket_messages_sent_total` - отправленные сообщения
+- `websocket_messages_received_total` - полученные сообщения
+- `websocket_connection_time_seconds` - время установки соединения
+- `websocket_success_rate_percent` - процент успешных подключений
+
+### gRPC метрики:
+- `grpc_requests_total` - общее количество запросов
+- `grpc_requests_success_total` - успешные запросы
+- `grpc_requests_failed_total` - неудачные запросы
+- `grpc_requests_per_second` - текущий RPS
+- `grpc_response_time_seconds` - время ответа
+- `grpc_status_codes_total` - счетчики по статус кодам
+- `grpc_success_rate_percent` - процент успешных запросов
 
 Удобно смотреть в Grafana, особенно если используешь Docker Compose - там уже всё настроено.
 
@@ -243,7 +316,13 @@ docker run --rm stresspulse -cpu 40 -memory -memory-target 200
 # HTTP нагрузочное тестирование внешнего сервиса
 docker run --rm stresspulse -http -http-url "https://httpbin.org/get" -http-rps 20
 
-# Ограничить ресурсы (чтобы не убить хост)
+# WebSocket тест
+docker run --rm stresspulse -websocket -websocket-url "ws://echo.websocket.org" -websocket-cps 5
+
+# gRPC тест
+docker run --rm stresspulse -grpc -grpc-addr "your-grpc-server:9000" -grpc-rps 10
+
+# Ограничить ресурсы
 docker run --cpus 0.5 --memory 512m stresspulse -cpu 50 -memory -memory-target 100
 
 # Полное окружение с мониторингом
@@ -252,17 +331,17 @@ docker-compose up -d
 
 ## Kubernetes
 
-Есть готовые конфиги в папке `helm/cpu-stress`. Можно деплоить одной командой:
+Есть готовые конфиги в папке `helm/stresspulse`. Можно деплоить одной командой:
 
 ```bash
 # Автоматический деплой
 ./deploy.sh
 
 # Или руками
-helm install stresspulse ./helm/cpu-stress
+helm install stresspulse ./helm/stresspulse
 
 # Поменять настройки
-helm upgrade stresspulse ./helm/cpu-stress --set config.cpu=80
+helm upgrade stresspulse ./helm/stresspulse --set config.cpu=80
 
 # Посмотреть что происходит
 make k8s-status
@@ -319,7 +398,7 @@ curl http://localhost:9090/metrics
 - `logger/` - логирование с уровнями
 - `logs/` - генератор фейковых логов
 - `memory/` - генератор нагрузки памяти
-- `network/` - HTTP нагрузочное тестирование
+- `network/` - HTTP, WebSocket и gRPC нагрузочное тестирование
 - `metrics/` - интеграция с Prometheus
 - `helm/` - конфиги для Kubernetes
 - `monitoring/` - настройки Prometheus/Grafana
@@ -332,4 +411,9 @@ curl http://localhost:9090/metrics
 - Web-интерфейс для управления
 - Distributed режим для кластерного тестирования
 - Больше типов фейковых логов (Kubernetes, Redis, ElasticSearch)
-- WebSocket и gRPC нагрузочное тестирование
+
+## Известные проблемы
+
+- На Windows иногда глючат WebSocket соединения (работаю над этим)
+- gRPC с TLS может быть капризным на некоторых версиях Go
+- При очень высоких RPS (>10k) может просадка производительности

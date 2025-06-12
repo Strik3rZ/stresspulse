@@ -20,4 +20,15 @@ var (
 	ErrInvalidHTTPPattern = errors.New("invalid HTTP pattern")
 	ErrInvalidHTTPMethod = errors.New("invalid HTTP method")
 	ErrInvalidHTTPTimeout = errors.New("HTTP timeout must be positive")
+
+	ErrInvalidWebSocketURL = errors.New("WebSocket URL cannot be empty")
+	ErrInvalidWebSocketCPS = errors.New("WebSocket CPS must be positive")
+	ErrInvalidWebSocketPattern = errors.New("invalid WebSocket pattern")
+	ErrInvalidWebSocketMessageInterval = errors.New("WebSocket message interval must be positive")
+	ErrInvalidWebSocketMessageSize = errors.New("WebSocket message size must be positive")
+
+	ErrInvalidGRPCAddress = errors.New("gRPC address cannot be empty")
+	ErrInvalidGRPCRPS = errors.New("gRPC RPS must be positive")
+	ErrInvalidGRPCPattern = errors.New("invalid gRPC pattern")
+	ErrInvalidGRPCMethodType = errors.New("invalid gRPC method type")
 ) 

@@ -57,6 +57,26 @@ func main() {
 		}
 	}
 
+	var websocketGenerator *network.WebSocketGenerator
+	if cfg.WebSocketEnabled {
+		websocketGenerator = network.NewWebSocketGenerator(cfg.WebSocketTargetURL, cfg.WebSocketTargetCPS, cfg.WebSocketPattern, cfg.WebSocketMessageInterval, cfg.WebSocketMessageSize)
+		
+		if cfg.WebSocketHeaders != "" {
+			headers := parseHTTPHeaders(cfg.WebSocketHeaders)
+			websocketGenerator.SetHeaders(headers)
+		}
+	}
+
+	var grpcGenerator *network.GRPCGenerator
+	if cfg.GRPCEnabled {
+		grpcGenerator = network.NewGRPCGenerator(cfg.GRPCTargetAddr, cfg.GRPCTargetRPS, cfg.GRPCPattern, cfg.GRPCServiceName, cfg.GRPCMethodType, cfg.GRPCUseSecure)
+		
+		if cfg.GRPCMetadata != "" {
+			metadata := parseHTTPHeaders(cfg.GRPCMetadata)
+			grpcGenerator.SetMetadata(metadata)
+		}
+	}
+
 	if cfg.MetricsEnabled {
 		collector := metrics.NewCollector()
 		go func() {
@@ -96,6 +116,38 @@ func main() {
 				}
 			}()
 		}
+
+		if cfg.WebSocketEnabled {
+			go func() {
+				ticker := time.NewTicker(2 * time.Second)
+				defer ticker.Stop()
+				
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case <-ticker.C:
+						updateWebSocketMetrics(websocketGenerator, cfg.WebSocketTargetCPS)
+					}
+				}
+			}()
+		}
+
+		if cfg.GRPCEnabled {
+			go func() {
+				ticker := time.NewTicker(2 * time.Second)
+				defer ticker.Stop()
+				
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case <-ticker.C:
+						updateGRPCMetrics(grpcGenerator, cfg.GRPCTargetRPS)
+					}
+				}
+			}()
+		}
 	}
 
 	generator.Start(ctx)
@@ -110,6 +162,16 @@ func main() {
 
 	if cfg.HTTPEnabled {
 		httpGenerator.Start(ctx)
+	}
+
+	if cfg.WebSocketEnabled {
+		websocketGenerator.Start(ctx)
+	}
+
+	if cfg.GRPCEnabled {
+		if err := grpcGenerator.Start(ctx); err != nil {
+			logger.Error("Failed to start gRPC generator: %v", err)
+		}
 	}
 
 	logger.Info("Starting StressPulse - Advanced Load Generator")
@@ -134,6 +196,12 @@ func main() {
 	}
 	if cfg.HTTPEnabled {
 		logger.Info("HTTP load test enabled: url=%s, target=%d RPS, pattern=%s, method=%s", cfg.HTTPTargetURL, cfg.HTTPTargetRPS, cfg.HTTPPattern, cfg.HTTPMethod)
+	}
+	if cfg.WebSocketEnabled {
+		logger.Info("WebSocket load test enabled: url=%s, target=%d CPS, pattern=%s, message_size=%d", cfg.WebSocketTargetURL, cfg.WebSocketTargetCPS, cfg.WebSocketPattern, cfg.WebSocketMessageSize)
+	}
+	if cfg.GRPCEnabled {
+		logger.Info("gRPC load test enabled: addr=%s, target=%d RPS, pattern=%s, method=%s, secure=%t", cfg.GRPCTargetAddr, cfg.GRPCTargetRPS, cfg.GRPCPattern, cfg.GRPCMethodType, cfg.GRPCUseSecure)
 	}
 
 	sigChan := make(chan os.Signal, 1)
@@ -163,6 +231,14 @@ func main() {
 		httpGenerator.Stop()
 	}
 
+	if cfg.WebSocketEnabled {
+		websocketGenerator.Stop()
+	}
+
+	if cfg.GRPCEnabled {
+		grpcGenerator.Stop()
+	}
+
 	generator.Stop()
 
 	logger.Info("StressPulse Final Statistics:")
@@ -189,6 +265,34 @@ func main() {
 			httpStats.TotalRequests,
 			httpStats.SuccessRequests, 
 			httpStats.FailedRequests,
+			avgResponseTime,
+			successRate)
+	}
+
+	if cfg.WebSocketEnabled {
+		wsStats := websocketGenerator.GetStats()
+		avgConnectionTime := websocketGenerator.GetAverageResponseTime()
+		successRate := websocketGenerator.GetSuccessRate()
+		
+		logger.Info("WebSocket - Total: %d, Active: %d, Failed: %d, Messages Sent: %d, Messages Received: %d, Avg Connection: %s, Success Rate: %.1f%%",
+			wsStats.TotalConnections,
+			wsStats.ActiveConnections,
+			wsStats.FailedConnections,
+			wsStats.MessagesSent,
+			wsStats.MessagesReceived,
+			avgConnectionTime,
+			successRate)
+	}
+
+	if cfg.GRPCEnabled {
+		grpcStats := grpcGenerator.GetStats()
+		avgResponseTime := grpcGenerator.GetAverageResponseTime()
+		successRate := grpcGenerator.GetSuccessRate()
+		
+		logger.Info("gRPC - Total: %d, Success: %d, Failed: %d, Avg Response: %s, Success Rate: %.1f%%",
+			grpcStats.TotalRequests,
+			grpcStats.SuccessRequests,
+			grpcStats.FailedRequests,
 			avgResponseTime,
 			successRate)
 	}
@@ -237,6 +341,60 @@ func updateHTTPMetrics(httpGen *network.HTTPGenerator, targetRPS int) {
 	metrics.HTTPResponseTimeHistogram.Observe(avgResponseTime.Seconds())
 	
 	metrics.HTTPSuccessRateGauge.Set(successRate)
+}
+
+func updateWebSocketMetrics(wsGen *network.WebSocketGenerator, targetCPS int) {
+	if wsGen == nil {
+		return
+	}
+
+	stats := wsGen.GetStats()
+	avgConnectionTime := wsGen.GetAverageResponseTime()
+	successRate := wsGen.GetSuccessRate()
+
+	metrics.WebSocketConnectionsCounter.Add(float64(stats.TotalConnections))
+	metrics.WebSocketActiveConnectionsGauge.Set(float64(stats.ActiveConnections))
+	metrics.WebSocketFailedConnectionsCounter.Add(float64(stats.FailedConnections))
+	metrics.WebSocketCurrentCPSGauge.Set(float64(stats.CurrentCPS))
+	metrics.WebSocketTargetCPSGauge.Set(float64(targetCPS))
+	
+	metrics.WebSocketMessagesSentCounter.Add(float64(stats.MessagesSent))
+	metrics.WebSocketMessagesReceivedCounter.Add(float64(stats.MessagesReceived))
+	
+	metrics.WebSocketAvgConnectionTimeGauge.Set(avgConnectionTime.Seconds())
+	metrics.WebSocketConnectionTimeHistogram.Observe(avgConnectionTime.Seconds())
+	
+	metrics.WebSocketSuccessRateGauge.Set(successRate)
+}
+
+func updateGRPCMetrics(grpcGen *network.GRPCGenerator, targetRPS int) {
+	if grpcGen == nil {
+		return
+	}
+
+	stats := grpcGen.GetStats()
+	avgResponseTime := grpcGen.GetAverageResponseTime()
+	successRate := grpcGen.GetSuccessRate()
+
+	metrics.GRPCRequestsCounter.Add(float64(stats.TotalRequests))
+	metrics.GRPCSuccessCounter.Add(float64(stats.SuccessRequests))
+	metrics.GRPCFailedCounter.Add(float64(stats.FailedRequests))
+	metrics.GRPCCurrentRPSGauge.Set(float64(stats.CurrentRPS))
+	metrics.GRPCTargetRPSGauge.Set(float64(targetRPS))
+	
+	metrics.GRPCResponseTimeGauge.Set(avgResponseTime.Seconds())
+	if stats.MinResponseTime < time.Hour {
+		metrics.GRPCMinResponseTimeGauge.Set(stats.MinResponseTime.Seconds())
+	}
+	metrics.GRPCMaxResponseTimeGauge.Set(stats.MaxResponseTime.Seconds())
+	
+	metrics.GRPCResponseTimeHistogram.Observe(avgResponseTime.Seconds())
+	
+	metrics.GRPCSuccessRateGauge.Set(successRate)
+	
+	for code, count := range stats.StatusCodes {
+		metrics.GRPCStatusCodesCounter.WithLabelValues(code.String()).Add(float64(count))
+	}
 }
 
 func parseHTTPHeaders(headersStr string) map[string]string {
