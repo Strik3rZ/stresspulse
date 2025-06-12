@@ -44,6 +44,14 @@ type WebSocketStats struct {
 }
 
 func NewWebSocketGenerator(targetURL string, targetCPS int, pattern string, messageInterval time.Duration, messageSize int) *WebSocketGenerator {
+	workerCount := 10
+	if targetCPS > 100 {
+		workerCount = targetCPS / 10
+		if workerCount > 50 {
+			workerCount = 50
+		}
+	}
+
 	return &WebSocketGenerator{
 		targetURL:       targetURL,
 		targetCPS:       targetCPS,
@@ -51,13 +59,13 @@ func NewWebSocketGenerator(targetURL string, targetCPS int, pattern string, mess
 		messageInterval: messageInterval,
 		messageSize:     messageSize,
 		enabled:         false,
-		connectionChan:  make(chan struct{}, targetCPS*2),
-		workerCount:     10,
+		connectionChan:  make(chan struct{}, targetCPS*4),
+		workerCount:     workerCount,
 		headers:         http.Header{},
 		dialer: &websocket.Dialer{
 			HandshakeTimeout: 30 * time.Second,
-			ReadBufferSize:   1024,
-			WriteBufferSize:  1024,
+			ReadBufferSize:   4096,
+			WriteBufferSize:  4096,
 		},
 		stats: &WebSocketStats{
 			StartTime:       time.Now(),

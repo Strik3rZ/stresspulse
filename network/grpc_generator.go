@@ -50,6 +50,24 @@ type GRPCStats struct {
 }
 
 func NewGRPCGenerator(targetAddress string, targetRPS int, pattern, serviceName, methodType string, useSecure bool) *GRPCGenerator {
+	workerCount := 10
+	poolSize := 5
+	
+	if targetRPS > 500 {
+		workerCount = targetRPS / 50
+		poolSize = targetRPS / 200
+		
+		if workerCount > 100 {
+			workerCount = 100
+		}
+		if poolSize > 20 {
+			poolSize = 20 // gRPC соединения дорогие
+		}
+		if poolSize < 5 {
+			poolSize = 5
+		}
+	}
+
 	return &GRPCGenerator{
 		targetAddress: targetAddress,
 		targetRPS:     targetRPS,
@@ -58,9 +76,9 @@ func NewGRPCGenerator(targetAddress string, targetRPS int, pattern, serviceName,
 		methodType:    methodType,
 		useSecure:     useSecure,
 		enabled:       false,
-		requestChan:   make(chan struct{}, targetRPS*2),
-		workerCount:   10,
-		poolSize:      5,
+		requestChan:   make(chan struct{}, targetRPS*4),
+		workerCount:   workerCount,
+		poolSize:      poolSize,
 		connPool:      make([]*grpc.ClientConn, 0),
 		metadata:      make(map[string]string),
 		stats: &GRPCStats{

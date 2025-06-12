@@ -51,6 +51,14 @@ type RequestTemplate struct {
 }
 
 func NewHTTPGenerator(targetURL string, targetRPS int, pattern, method string, timeout time.Duration) *HTTPGenerator {
+	workerCount := 10
+	if targetRPS > 1000 {
+		workerCount = targetRPS / 100
+		if workerCount > 100 {
+			workerCount = 100
+		}
+	}
+
 	return &HTTPGenerator{
 		targetURL:   targetURL,
 		targetRPS:   targetRPS,
@@ -59,14 +67,15 @@ func NewHTTPGenerator(targetURL string, targetRPS int, pattern, method string, t
 		headers:     make(map[string]string),
 		timeout:     timeout,
 		enabled:     false,
-		requestChan: make(chan struct{}, targetRPS*2),
-		workerCount: 10,
+		requestChan: make(chan struct{}, targetRPS*4),
+		workerCount: workerCount,
 		client: &http.Client{
 			Timeout: timeout,
 			Transport: &http.Transport{
-				MaxIdleConns:        100,
-				MaxIdleConnsPerHost: 10,
+				MaxIdleConns:        200,
+				MaxIdleConnsPerHost: 50,
 				IdleConnTimeout:     30 * time.Second,
+				DisableKeepAlives:   false,
 			},
 		},
 		stats: &HTTPStats{
@@ -118,7 +127,15 @@ func (hg *HTTPGenerator) Stop() {
 }
 
 func (hg *HTTPGenerator) generateRPSLoad() {
-	ticker := time.NewTicker(100 * time.Millisecond)
+	tickInterval := 100 * time.Millisecond
+	if hg.targetRPS > 5000 {
+		tickInterval = 50 * time.Millisecond
+	}
+	if hg.targetRPS > 10000 {
+		tickInterval = 20 * time.Millisecond
+	}
+
+	ticker := time.NewTicker(tickInterval)
 	defer ticker.Stop()
 
 	lastSecond := time.Now().Unix()
@@ -137,7 +154,7 @@ func (hg *HTTPGenerator) generateRPSLoad() {
 			}
 			
 			currentRPS := hg.calculateCurrentRPS()
-			requestsToSend := hg.calculateRequestsToSend(currentRPS, requestsThisSecond)
+			requestsToSend := hg.calculateRequestsToSend(currentRPS, requestsThisSecond, tickInterval)
 			
 			for i := 0; i < requestsToSend; i++ {
 				select {
@@ -189,19 +206,21 @@ func (hg *HTTPGenerator) calculateCurrentRPS() int {
 	return hg.targetRPS
 }
 
-func (hg *HTTPGenerator) calculateRequestsToSend(currentRPS, requestsThisSecond int) int {
-	requestsPer100ms := currentRPS / 10
+func (hg *HTTPGenerator) calculateRequestsToSend(currentRPS, requestsThisSecond int, tickInterval time.Duration) int {
+	ticksPerSecond := float64(time.Second) / float64(tickInterval)
+	requestsPerTick := float64(currentRPS) / ticksPerSecond
 	
 	remainingRPS := currentRPS - requestsThisSecond
 	if remainingRPS < 0 {
 		remainingRPS = 0
 	}
 	
-	if requestsPer100ms > remainingRPS {
-		requestsPer100ms = remainingRPS
+	requestsToSend := int(requestsPerTick)
+	if requestsToSend > remainingRPS {
+		requestsToSend = remainingRPS
 	}
 	
-	return requestsPer100ms
+	return requestsToSend
 }
 
 func (hg *HTTPGenerator) httpWorker(workerID int) {
