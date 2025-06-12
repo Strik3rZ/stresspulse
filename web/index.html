@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StressPulse - Web Interface</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 StressPulse Control Panel</h1>
+            <div class="status-bar">
+                <div class="status-item">
+                    <span class="status-label">Status:</span>
+                    <span id="global-status" class="status-value stopped">STOPPED</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Uptime:</span>
+                    <span id="uptime" class="status-value">00:00:00</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>CPU Load</h3>
+                    <div class="metric-value" id="cpu-current">0%</div>
+                    <div class="metric-target">Target: <span id="cpu-target">0%</span></div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="cpu-progress"></div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <h3>Memory Usage</h3>
+                    <div class="metric-value" id="memory-current">0 MB</div>
+                    <div class="metric-target">Target: <span id="memory-target">0 MB</span></div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="memory-progress"></div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <h3>HTTP RPS</h3>
+                    <div class="metric-value" id="http-current">0</div>
+                    <div class="metric-target">Target: <span id="http-target">0</span></div>
+                    <div class="metric-detail">Success: <span id="http-success">0%</span></div>
+                </div>
+
+                <div class="metric-card">
+                    <h3>WebSocket CPS</h3>
+                    <div class="metric-value" id="ws-current">0</div>
+                    <div class="metric-target">Active: <span id="ws-active">0</span></div>
+                    <div class="metric-detail">Success: <span id="ws-success">0%</span></div>
+                </div>
+
+                <div class="metric-card">
+                    <h3>gRPC RPS</h3>
+                    <div class="metric-value" id="grpc-current">0</div>
+                    <div class="metric-target">Target: <span id="grpc-target">0</span></div>
+                    <div class="metric-detail">Success: <span id="grpc-success">0%</span></div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="control-section">
+                    <h2>🔧 Control Panel</h2>
+                    <div class="control-buttons">
+                        <button id="start-all" class="btn btn-primary">Start All</button>
+                        <button id="stop-all" class="btn btn-danger">Stop All</button>
+                        <button id="restart-all" class="btn btn-warning">Restart</button>
+                        <button id="save-config" class="btn btn-secondary">Save Config</button>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h3>💻 CPU Load</h3>
+                    <div class="control-grid">
+                        <div class="form-group">
+                            <label for="cpu-enabled">Enable CPU Load</label>
+                            <input type="checkbox" id="cpu-enabled">
+                        </div>
+                        <div class="form-group">
+                            <label for="cpu-load">CPU Load (%)</label>
+                            <input type="number" id="cpu-load" min="0" max="100" value="50">
+                        </div>
+                        <div class="form-group">
+                            <label for="cpu-pattern">Pattern</label>
+                            <select id="cpu-pattern">
+                                <option value="sine">Sine Wave</option>
+                                <option value="square">Square Wave</option>
+                                <option value="sawtooth">Sawtooth</option>
+                                <option value="random">Random</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="cpu-drift">Drift (%)</label>
+                            <input type="number" id="cpu-drift" min="0" max="50" value="10">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h3>🧠 Memory Load</h3>
+                    <div class="control-grid">
+                        <div class="form-group">
+                            <label for="memory-enabled">Enable Memory Load</label>
+                            <input type="checkbox" id="memory-enabled">
+                        </div>
+                        <div class="form-group">
+                            <label for="memory-size">Target Size (MB)</label>
+                            <input type="number" id="memory-size" min="1" max="8192" value="100">
+                        </div>
+                        <div class="form-group">
+                            <label for="memory-pattern">Pattern</label>
+                            <select id="memory-pattern">
+                                <option value="constant">Constant</option>
+                                <option value="leak">Memory Leak</option>
+                                <option value="spike">Spike</option>
+                                <option value="cycle">Cycle</option>
+                                <option value="random">Random</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h3>🌐 HTTP Load Testing</h3>
+                    <div class="control-grid">
+                        <div class="form-group">
+                            <label for="http-enabled">Enable HTTP Testing</label>
+                            <input type="checkbox" id="http-enabled">
+                        </div>
+                        <div class="form-group">
+                            <label for="http-url">Target URL</label>
+                            <input type="url" id="http-url" value="http://httpbin.org/get" placeholder="http://example.com/api">
+                        </div>
+                        <div class="form-group">
+                            <label for="http-rps">Target RPS</label>
+                            <input type="number" id="http-rps" min="1" max="10000" value="10">
+                        </div>
+                        <div class="form-group">
+                            <label for="http-method">HTTP Method</label>
+                            <select id="http-method">
+                                <option value="GET">GET</option>
+                                <option value="POST">POST</option>
+                                <option value="PUT">PUT</option>
+                                <option value="DELETE">DELETE</option>
+                                <option value="PATCH">PATCH</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="http-pattern">Load Pattern</label>
+                            <select id="http-pattern">
+                                <option value="constant">Constant</option>
+                                <option value="spike">Spike</option>
+                                <option value="cycle">Cycle</option>
+                                <option value="ramp">Ramp</option>
+                                <option value="random">Random</option>
+                            </select>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="http-headers">Headers (key:value, comma separated)</label>
+                            <input type="text" id="http-headers" placeholder="Content-Type:application/json,Authorization:Bearer token">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="http-body">Request Body (JSON)</label>
+                            <textarea id="http-body" rows="3" placeholder='{"test": "data"}'></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h3>🔌 WebSocket Testing</h3>
+                    <div class="control-grid">
+                        <div class="form-group">
+                            <label for="ws-enabled">Enable WebSocket Testing</label>
+                            <input type="checkbox" id="ws-enabled">
+                        </div>
+                        <div class="form-group">
+                            <label for="ws-url">WebSocket URL</label>
+                            <input type="url" id="ws-url" value="ws://echo.websocket.org" placeholder="ws://example.com/ws">
+                        </div>
+                        <div class="form-group">
+                            <label for="ws-cps">Connections per Second</label>
+                            <input type="number" id="ws-cps" min="1" max="1000" value="5">
+                        </div>
+                        <div class="form-group">
+                            <label for="ws-pattern">Connection Pattern</label>
+                            <select id="ws-pattern">
+                                <option value="constant">Constant</option>
+                                <option value="spike">Spike</option>
+                                <option value="cycle">Cycle</option>
+                                <option value="ramp">Ramp</option>
+                                <option value="random">Random</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="ws-message-interval">Message Interval (seconds)</label>
+                            <input type="number" id="ws-message-interval" min="1" max="60" value="2">
+                        </div>
+                        <div class="form-group">
+                            <label for="ws-message-size">Message Size (bytes)</label>
+                            <input type="number" id="ws-message-size" min="1" max="8192" value="256">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h3>⚡ gRPC Testing</h3>
+                    <div class="control-grid">
+                        <div class="form-group">
+                            <label for="grpc-enabled">Enable gRPC Testing</label>
+                            <input type="checkbox" id="grpc-enabled">
+                        </div>
+                        <div class="form-group">
+                            <label for="grpc-addr">gRPC Address</label>
+                            <input type="text" id="grpc-addr" value="localhost:9000" placeholder="host:port">
+                        </div>
+                        <div class="form-group">
+                            <label for="grpc-rps">Target RPS</label>
+                            <input type="number" id="grpc-rps" min="1" max="10000" value="10">
+                        </div>
+                        <div class="form-group">
+                            <label for="grpc-method">Method Type</label>
+                            <select id="grpc-method">
+                                <option value="health_check">Health Check</option>
+                                <option value="unary">Unary</option>
+                                <option value="server_stream">Server Stream</option>
+                                <option value="client_stream">Client Stream</option>
+                                <option value="bidi_stream">Bidirectional Stream</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="grpc-pattern">Load Pattern</label>
+                            <select id="grpc-pattern">
+                                <option value="constant">Constant</option>
+                                <option value="spike">Spike</option>
+                                <option value="cycle">Cycle</option>
+                                <option value="ramp">Ramp</option>
+                                <option value="random">Random</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="grpc-secure">Use TLS</label>
+                            <input type="checkbox" id="grpc-secure">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="grpc-service">Service Name</label>
+                            <input type="text" id="grpc-service" placeholder="UserService">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h3>⚙️ Additional Settings</h3>
+                    <div class="control-grid">
+                        <div class="form-group">
+                            <label for="fake-logs-enabled">Enable Fake Logs</label>
+                            <input type="checkbox" id="fake-logs-enabled">
+                        </div>
+                        <div class="form-group">
+                            <label for="fake-logs-type">Log Type</label>
+                            <select id="fake-logs-type">
+                                <option value="generic">Generic</option>
+                                <option value="java">Java/Spring</option>
+                                <option value="web">Web Server</option>
+                                <option value="microservice">Microservice</option>
+                                <option value="database">Database</option>
+                                <option value="ecommerce">E-commerce</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="duration">Test Duration</label>
+                            <input type="text" id="duration" value="0" placeholder="0 = infinite, 30s, 5m, 1h">
+                        </div>
+                        <div class="form-group">
+                            <label for="workers">Worker Threads</label>
+                            <input type="number" id="workers" min="0" max="100" value="0" placeholder="0 = auto">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="logs-section">
+                <h3>📊 Real-time Logs</h3>
+                <div class="logs-container">
+                    <div id="logs" class="logs-output"></div>
+                </div>
+                <div class="logs-controls">
+                    <button id="clear-logs" class="btn btn-secondary">Clear Logs</button>
+                    <button id="toggle-autoscroll" class="btn btn-secondary">Auto-scroll: ON</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html> 

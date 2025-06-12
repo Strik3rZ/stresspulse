@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math/rand"
@@ -11,7 +12,7 @@ type FakeLogGenerator struct {
 	logType    string
 	interval   time.Duration
 	enabled    bool
-	stopChan   chan bool
+	ctx        context.Context
 	logger     *log.Logger
 }
 
@@ -20,17 +21,17 @@ func NewFakeLogGenerator(logType string, interval time.Duration, logger *log.Log
 		logType:  logType,
 		interval: interval,
 		enabled:  false,
-		stopChan: make(chan bool),
 		logger:   logger,
 	}
 }
 
-func (flg *FakeLogGenerator) Start() {
+func (flg *FakeLogGenerator) Start(ctx context.Context) {
 	if flg.enabled {
 		return
 	}
 	
 	flg.enabled = true
+	flg.ctx = ctx
 	go flg.generateLogs()
 }
 
@@ -40,7 +41,6 @@ func (flg *FakeLogGenerator) Stop() {
 	}
 	
 	flg.enabled = false
-	flg.stopChan <- true
 }
 
 func (flg *FakeLogGenerator) generateLogs() {
@@ -49,7 +49,7 @@ func (flg *FakeLogGenerator) generateLogs() {
 	
 	for {
 		select {
-		case <-flg.stopChan:
+		case <-flg.ctx.Done():
 			return
 		case <-ticker.C:
 			flg.generateLogEntry()

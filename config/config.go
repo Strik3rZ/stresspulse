@@ -51,6 +51,9 @@ type Config struct {
 	GRPCMethodType   string
 	GRPCUseSecure    bool
 	GRPCMetadata     string
+
+	WebEnabled       bool
+	WebPort          int
 }
 
 func NewConfig() *Config {
@@ -98,6 +101,9 @@ func NewConfig() *Config {
 		GRPCMethodType:  "health_check",
 		GRPCUseSecure:   false,
 		GRPCMetadata:    "",
+
+		WebEnabled:      false,
+		WebPort:         8080,
 	}
 }
 
@@ -145,6 +151,9 @@ func (c *Config) ParseFlags() {
 	flag.StringVar(&c.GRPCMethodType, "grpc-method", c.GRPCMethodType, "Тип gRPC метода (health_check, unary, server_stream, client_stream, bidi_stream)")
 	flag.BoolVar(&c.GRPCUseSecure, "grpc-secure", c.GRPCUseSecure, "Использовать TLS для gRPC соединений")
 	flag.StringVar(&c.GRPCMetadata, "grpc-metadata", c.GRPCMetadata, "gRPC метаданные в формате 'Key1:Value1,Key2:Value2'")
+	
+	flag.BoolVar(&c.WebEnabled, "web", c.WebEnabled, "Включить веб-интерфейс управления")
+	flag.IntVar(&c.WebPort, "web-port", c.WebPort, "Порт веб-интерфейса (1024-65535)")
 	
 	flag.Parse()
 }
@@ -240,7 +249,6 @@ func (c *Config) Validate() error {
 		}
 	}
 	
-	// WebSocket validation
 	if c.WebSocketEnabled {
 		if c.WebSocketTargetURL == "" {
 			return ErrInvalidWebSocketURL
@@ -267,7 +275,6 @@ func (c *Config) Validate() error {
 		}
 	}
 	
-	// gRPC validation
 	if c.GRPCEnabled {
 		if c.GRPCTargetAddr == "" {
 			return ErrInvalidGRPCAddress
@@ -296,6 +303,12 @@ func (c *Config) Validate() error {
 		}
 		if !valid {
 			return ErrInvalidGRPCMethodType
+		}
+	}
+	
+	if c.WebEnabled {
+		if c.WebPort < 1024 || c.WebPort > 65535 {
+			return ErrInvalidWebPort
 		}
 	}
 	

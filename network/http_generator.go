@@ -99,7 +99,7 @@ func (hg *HTTPGenerator) Start(ctx context.Context) {
 	}
 
 	hg.enabled = true
-	hg.ctx, hg.cancel = context.WithCancel(ctx)
+	hg.ctx = ctx
 	
 	logger.Info("Starting HTTP load generator: %s, target RPS: %d, pattern: %s", 
 		hg.targetURL, hg.targetRPS, hg.pattern)
@@ -119,9 +119,6 @@ func (hg *HTTPGenerator) Stop() {
 	}
 
 	hg.enabled = false
-	if hg.cancel != nil {
-		hg.cancel()
-	}
 	
 	logger.Info("HTTP load generator stopped")
 }

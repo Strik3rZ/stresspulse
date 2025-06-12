@@ -49,7 +49,7 @@ func (mg *MemoryGenerator) Start(ctx context.Context) {
 	}
 
 	mg.enabled = true
-	mg.ctx, mg.cancel = context.WithCancel(ctx)
+	mg.ctx = ctx
 	
 	logger.Info("Starting memory stress generator: %dMB target, pattern: %s", mg.targetMemoryMB, mg.pattern)
 	
@@ -62,9 +62,6 @@ func (mg *MemoryGenerator) Stop() {
 	}
 
 	mg.enabled = false
-	if mg.cancel != nil {
-		mg.cancel()
-	}
 	
 	mg.mutex.Lock()
 	mg.allocatedBlocks = nil

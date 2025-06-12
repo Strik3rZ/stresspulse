@@ -17,6 +17,31 @@
 - **Тестировать RPS и время ответа веб-сервисов**
 - **WebSocket нагрузочное тестирование**
 - **gRPC тестирование**
+- **Управлять всем через современный веб-интерфейс**
+
+## Веб-интерфейс управления
+
+Теперь можно управлять StressPulse через современный веб-интерфейс:
+
+```bash
+# Запуск с веб-интерфейсом
+go run main.go -web
+
+# На другом порту
+go run main.go -web -web-port 9000
+```
+
+**Возможности веб-интерфейса:**
+- **Управление в реальном времени** - запуск/остановка/настройка без перезапуска
+- **Live мониторинг** - метрики CPU, памяти, HTTP, WebSocket, gRPC в реальном времени
+- **Гибкие настройки** - все параметры доступны через удобные формы
+- **Логи в браузере** - просмотр событий с цветовой кодировкой
+- **Автосохранение** - конфигурация сохраняется в браузере
+- **Responsive** - работает на десктопе, планшете и мобильном
+
+После запуска с флагом `-web` откройте браузер: **http://localhost:8080**
+
+Подробнее в [WEB_INTERFACE_GUIDE.md](WEB_INTERFACE_GUIDE.md).
 
 ## Как попробовать
 
@@ -28,6 +53,9 @@ go mod tidy
 
 # Запусти на 50% CPU
 go run main.go
+
+# С веб-интерфейсом (откроется на http://localhost:8080)
+go run main.go -web
 
 # С фейковыми логами Java приложения
 go run main.go -cpu 70 -fake-logs -fake-logs-type java
@@ -44,8 +72,8 @@ go run main.go -websocket -websocket-url "ws://echo.websocket.org" -websocket-cp
 # gRPC тест
 go run main.go -grpc -grpc-addr "localhost:9000" -grpc-rps 20
 
-# Полный стресс-тест: CPU + память + HTTP + WebSocket + gRPC + логи
-go run main.go -cpu 60 -memory -memory-target 300 -http -http-url "http://localhost:8080" -http-rps 100 -websocket -websocket-url "ws://localhost:8080/ws" -grpc -grpc-addr "localhost:9000" -fake-logs
+# Полный стресс-тест: CPU + память + HTTP + WebSocket + gRPC + логи + веб-интерфейс
+go run main.go -cpu 60 -memory -memory-target 300 -http -http-url "http://localhost:8080" -http-rps 100 -websocket -websocket-url "ws://localhost:8080/ws" -grpc -grpc-addr "localhost:9000" -fake-logs -web
 ```
 
 Если есть Docker:
@@ -408,7 +436,7 @@ curl http://localhost:9090/metrics
 Планирую добавить:
 - Нагрузку на диск (I/O операции)
 - Больше паттернов 
-- Web-интерфейс для управления
+- ✅ ~~Web-интерфейс для управления~~ (Готово!)
 - Distributed режим для кластерного тестирования
 - Больше типов фейковых логов (Kubernetes, Redis, ElasticSearch)
 

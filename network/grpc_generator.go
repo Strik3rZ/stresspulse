@@ -99,7 +99,7 @@ func (gg *GRPCGenerator) Start(ctx context.Context) error {
 	}
 
 	gg.enabled = true
-	gg.ctx, gg.cancel = context.WithCancel(ctx)
+	gg.ctx = ctx
 	
 	if err := gg.createConnectionPool(); err != nil {
 		return err
@@ -124,9 +124,6 @@ func (gg *GRPCGenerator) Stop() {
 	}
 
 	gg.enabled = false
-	if gg.cancel != nil {
-		gg.cancel()
-	}
 	
 	for _, conn := range gg.connPool {
 		conn.Close()

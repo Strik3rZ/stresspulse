@@ -15,6 +15,7 @@ import (
 	"stresspulse/memory"
 	"stresspulse/metrics"
 	"stresspulse/network"
+	"stresspulse/web"
 )
 
 func main() {
@@ -30,6 +31,14 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	var webServer *web.WebServer
+	if cfg.WebEnabled {
+		webServer = web.NewWebServer(cfg.WebPort)
+		if err := webServer.Start(); err != nil {
+			logger.Error("Failed to start web server: %v", err)
+		}
+	}
 
 	generator := load.NewGenerator(cfg)
 
@@ -153,7 +162,7 @@ func main() {
 	generator.Start(ctx)
 
 	if cfg.FakeLogsEnabled {
-		fakeLogGenerator.Start()
+		fakeLogGenerator.Start(ctx)
 	}
 
 	if cfg.MemoryEnabled {
@@ -203,6 +212,9 @@ func main() {
 	if cfg.GRPCEnabled {
 		logger.Info("gRPC load test enabled: addr=%s, target=%d RPS, pattern=%s, method=%s, secure=%t", cfg.GRPCTargetAddr, cfg.GRPCTargetRPS, cfg.GRPCPattern, cfg.GRPCMethodType, cfg.GRPCUseSecure)
 	}
+	if cfg.WebEnabled {
+		logger.Info("Web interface enabled on port %d at http://localhost:%d", cfg.WebPort, cfg.WebPort)
+	}
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -219,27 +231,35 @@ func main() {
 		logger.Info("Received signal: %v", sig)
 	}
 
-	if cfg.FakeLogsEnabled {
+	if cfg.FakeLogsEnabled && fakeLogGenerator != nil {
 		fakeLogGenerator.Stop()
 	}
 
-	if cfg.MemoryEnabled {
+	if cfg.MemoryEnabled && memoryGenerator != nil {
 		memoryGenerator.Stop()
 	}
 
-	if cfg.HTTPEnabled {
+	if cfg.HTTPEnabled && httpGenerator != nil {
 		httpGenerator.Stop()
 	}
 
-	if cfg.WebSocketEnabled {
+	if cfg.WebSocketEnabled && websocketGenerator != nil {
 		websocketGenerator.Stop()
 	}
 
-	if cfg.GRPCEnabled {
+	if cfg.GRPCEnabled && grpcGenerator != nil {
 		grpcGenerator.Stop()
 	}
 
-	generator.Stop()
+	if generator != nil {
+		generator.Stop()
+	}
+
+	if webServer != nil {
+		if err := webServer.Stop(); err != nil {
+			logger.Error("Failed to stop web server: %v", err)
+		}
+	}
 
 	logger.Info("StressPulse Final Statistics:")
 	

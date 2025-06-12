@@ -87,7 +87,7 @@ func (wsg *WebSocketGenerator) Start(ctx context.Context) {
 	}
 
 	wsg.enabled = true
-	wsg.ctx, wsg.cancel = context.WithCancel(ctx)
+	wsg.ctx = ctx
 	
 	logger.Info("Starting WebSocket load generator: %s, target CPS: %d, pattern: %s", 
 		wsg.targetURL, wsg.targetCPS, wsg.pattern)
@@ -106,9 +106,6 @@ func (wsg *WebSocketGenerator) Stop() {
 	}
 
 	wsg.enabled = false
-	if wsg.cancel != nil {
-		wsg.cancel()
-	}
 	
 	logger.Info("WebSocket load generator stopped")
 }

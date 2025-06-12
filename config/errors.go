@@ -31,4 +31,6 @@ var (
 	ErrInvalidGRPCRPS = errors.New("gRPC RPS must be positive")
 	ErrInvalidGRPCPattern = errors.New("invalid gRPC pattern")
 	ErrInvalidGRPCMethodType = errors.New("invalid gRPC method type")
+
+	ErrInvalidWebPort = errors.New("web port must be between 1024 and 65535")
 ) 
