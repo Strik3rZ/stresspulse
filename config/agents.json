@@ -1,0 +1,9 @@
+{
+  "agents": {
+    "asd": {
+      "url": "http://localhost:8081",
+      "last_seen": "2025-06-13T21:55:15.7518288+03:00",
+      "is_healthy": true
+    }
+  }
+}

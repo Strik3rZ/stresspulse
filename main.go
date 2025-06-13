@@ -16,6 +16,7 @@ import (
 	"stresspulse/metrics"
 	"stresspulse/network"
 	"stresspulse/web"
+	"stresspulse/agent"
 )
 
 func main() {
@@ -31,6 +32,26 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	if cfg.AgentMode {
+		agent := agent.NewAgent(cfg.AgentPort)
+		if err := agent.Start(); err != nil {
+			logger.Error("Failed to start agent: %v", err)
+			os.Exit(1)
+		}
+
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+		sig := <-sigChan
+		logger.Info("Received signal: %v", sig)
+
+		if err := agent.Stop(); err != nil {
+			logger.Error("Failed to stop agent: %v", err)
+		}
+
+		return
+	}
 
 	var webServer *web.WebServer
 	if cfg.WebEnabled {

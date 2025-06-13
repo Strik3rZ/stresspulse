@@ -33,4 +33,5 @@ var (
 	ErrInvalidGRPCMethodType = errors.New("invalid gRPC method type")
 
 	ErrInvalidWebPort = errors.New("web port must be between 1024 and 65535")
+	ErrInvalidAgentPort = errors.New("agent port must be between 1024 and 65535")
 ) 

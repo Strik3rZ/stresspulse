@@ -54,6 +54,9 @@ type Config struct {
 
 	WebEnabled       bool
 	WebPort          int
+
+	AgentMode bool `json:"agent_mode"`
+	AgentPort int  `json:"agent_port"`
 }
 
 func NewConfig() *Config {
@@ -104,6 +107,9 @@ func NewConfig() *Config {
 
 		WebEnabled:      false,
 		WebPort:         8080,
+
+		AgentMode: false,
+		AgentPort: 8081,
 	}
 }
 
@@ -155,6 +161,9 @@ func (c *Config) ParseFlags() {
 	flag.BoolVar(&c.WebEnabled, "web", c.WebEnabled, "Включить веб-интерфейс управления")
 	flag.IntVar(&c.WebPort, "web-port", c.WebPort, "Порт веб-интерфейса (1024-65535)")
 	
+	flag.BoolVar(&c.AgentMode, "agent", c.AgentMode, "Run in agent mode")
+	flag.IntVar(&c.AgentPort, "agent-port", c.AgentPort, "Port for agent mode")
+	
 	flag.Parse()
 }
 
@@ -192,9 +201,6 @@ func (c *Config) Validate() error {
 		if !valid {
 			return ErrInvalidFakeLogsType
 		}
-		if c.FakeLogsInterval <= 0 {
-			return ErrInvalidFakeLogsInterval
-		}
 	}
 	if c.MemoryEnabled {
 		if c.MemoryTargetMB <= 0 {
@@ -202,17 +208,14 @@ func (c *Config) Validate() error {
 		}
 		validPatterns := []string{"constant", "leak", "spike", "cycle", "random"}
 		valid := false
-		for _, validPattern := range validPatterns {
-			if c.MemoryPattern == validPattern {
+		for _, pattern := range validPatterns {
+			if c.MemoryPattern == pattern {
 				valid = true
 				break
 			}
 		}
 		if !valid {
 			return ErrInvalidMemoryPattern
-		}
-		if c.MemoryInterval <= 0 {
-			return ErrInvalidMemoryInterval
 		}
 	}
 	if c.HTTPEnabled {
@@ -222,21 +225,10 @@ func (c *Config) Validate() error {
 		if c.HTTPTargetRPS <= 0 {
 			return ErrInvalidHTTPRPS
 		}
-		validHTTPPatterns := []string{"constant", "spike", "cycle", "ramp", "random"}
-		valid := false
-		for _, validPattern := range validHTTPPatterns {
-			if c.HTTPPattern == validPattern {
-				valid = true
-				break
-			}
-		}
-		if !valid {
-			return ErrInvalidHTTPPattern
-		}
 		validMethods := []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
-		valid = false
-		for _, validMethod := range validMethods {
-			if c.HTTPMethod == validMethod {
+		valid := false
+		for _, method := range validMethods {
+			if c.HTTPMethod == method {
 				valid = true
 				break
 			}
@@ -244,11 +236,18 @@ func (c *Config) Validate() error {
 		if !valid {
 			return ErrInvalidHTTPMethod
 		}
-		if c.HTTPTimeout <= 0 {
-			return ErrInvalidHTTPTimeout
+		validPatterns := []string{"constant", "spike", "cycle", "ramp", "random"}
+		valid = false
+		for _, pattern := range validPatterns {
+			if c.HTTPPattern == pattern {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return ErrInvalidHTTPPattern
 		}
 	}
-	
 	if c.WebSocketEnabled {
 		if c.WebSocketTargetURL == "" {
 			return ErrInvalidWebSocketURL
@@ -256,10 +255,10 @@ func (c *Config) Validate() error {
 		if c.WebSocketTargetCPS <= 0 {
 			return ErrInvalidWebSocketCPS
 		}
-		validWebSocketPatterns := []string{"constant", "spike", "cycle", "ramp", "random"}
+		validPatterns := []string{"constant", "spike", "cycle", "ramp", "random"}
 		valid := false
-		for _, validPattern := range validWebSocketPatterns {
-			if c.WebSocketPattern == validPattern {
+		for _, pattern := range validPatterns {
+			if c.WebSocketPattern == pattern {
 				valid = true
 				break
 			}
@@ -267,14 +266,7 @@ func (c *Config) Validate() error {
 		if !valid {
 			return ErrInvalidWebSocketPattern
 		}
-		if c.WebSocketMessageInterval <= 0 {
-			return ErrInvalidWebSocketMessageInterval
-		}
-		if c.WebSocketMessageSize <= 0 {
-			return ErrInvalidWebSocketMessageSize
-		}
 	}
-	
 	if c.GRPCEnabled {
 		if c.GRPCTargetAddr == "" {
 			return ErrInvalidGRPCAddress
@@ -282,10 +274,10 @@ func (c *Config) Validate() error {
 		if c.GRPCTargetRPS <= 0 {
 			return ErrInvalidGRPCRPS
 		}
-		validGRPCPatterns := []string{"constant", "spike", "cycle", "ramp", "random"}
+		validPatterns := []string{"constant", "spike", "cycle", "ramp", "random"}
 		valid := false
-		for _, validPattern := range validGRPCPatterns {
-			if c.GRPCPattern == validPattern {
+		for _, pattern := range validPatterns {
+			if c.GRPCPattern == pattern {
 				valid = true
 				break
 			}
@@ -293,10 +285,10 @@ func (c *Config) Validate() error {
 		if !valid {
 			return ErrInvalidGRPCPattern
 		}
-		validGRPCMethods := []string{"health_check", "unary", "server_stream", "client_stream", "bidi_stream"}
+		validMethods := []string{"health_check", "unary", "server_stream", "client_stream", "bidi_stream"}
 		valid = false
-		for _, validMethod := range validGRPCMethods {
-			if c.GRPCMethodType == validMethod {
+		for _, method := range validMethods {
+			if c.GRPCMethodType == method {
 				valid = true
 				break
 			}
@@ -306,9 +298,16 @@ func (c *Config) Validate() error {
 		}
 	}
 	
+	// Web Interface validation
 	if c.WebEnabled {
 		if c.WebPort < 1024 || c.WebPort > 65535 {
 			return ErrInvalidWebPort
+		}
+	}
+
+	if c.AgentMode {
+		if c.AgentPort < 1024 || c.AgentPort > 65535 {
+			return ErrInvalidAgentPort
 		}
 	}
 	
